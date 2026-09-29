@@ -1,0 +1,124 @@
+{
+  "title": "Nathan Clergé",
+  "subtitle": "Parcourez le temple et appuyez sur E près d’une œuvre pour la regarder de plus près.",
+  "works": [
+    {
+      "id": "b913cc01-05f5-46fb-b72c-744c00f61036",
+      "title": "Nature Scene PBR",
+      "description": "Un étang naturel au cœur d’une forêt dense, entouré de végétation sauvage, de rochers et de hautes herbes. La lumière douce traverse les arbres et se reflète sur l’eau sombre aux teintes verdâtres, créant une atmosphère calme et mystérieuse. Les arbres qui bordent le bassin donnent une impression d’isolement, comme si cet endroit était une petite oasis cachée au milieu de la nature.",
+      "year": "2024",
+      "tags": [
+        "3D"
+      ],
+      "link": "",
+      "createdAt": "2026-09-29T19:34:40.810Z",
+      "images": [
+        "/uploads/31b4bc6a-1350-44f8-b893-9069912405c2.jpg"
+      ],
+      "software": []
+    },
+    {
+      "id": "64672cec-7720-4cc9-b30b-876cb835ce1b",
+      "title": "Photoshop Trainning",
+      "description": "",
+      "year": "2026",
+      "tags": [
+        "Print"
+      ],
+      "software": [
+        "Photoshop"
+      ],
+      "link": "",
+      "images": [
+        "/uploads/aeb3fbd6-56d6-416f-8ff3-7506affcb33e.png",
+        "/uploads/33187cba-0aa1-45fe-83ab-607e9792e6e0.png",
+        "/uploads/5c69b34b-031b-44cd-97dc-6006024a2fed.png",
+        "/uploads/2e1276ab-29c6-4fbe-bdaf-2c3fd633c0d1.png",
+        "/uploads/80615f31-17ff-43b3-9df1-f73ae8cc5cdd.png",
+        "/uploads/c8fb4a2c-6ec7-43c1-9faa-b2c3e89c8fcc.png",
+        "/uploads/cdba6fa6-8b53-49ae-9206-cde3d9d66ebc.png",
+        "/uploads/bd0e2c3c-7a03-4bad-8489-ef0f91979b9f.png",
+        "/uploads/1a372ee8-348f-497c-a1db-2b3ccdb08123.png",
+        "/uploads/4219b2d5-1d39-454d-8614-bcb33bd2078d.png",
+        "/uploads/e3dad301-d077-48ca-bd8e-096a281c4439.png",
+        "/uploads/257b89af-f17f-4840-8991-f3319cfae05a.png"
+      ],
+      "createdAt": "2026-09-29T20:38:16.251Z"
+    },
+    {
+      "id": "d2c86404-f8bb-4811-b8e5-1a4f8a7ce9ca",
+      "title": "Illustrator trainning",
+      "description": "",
+      "year": "2026",
+      "tags": [
+        "Print"
+      ],
+      "software": [
+        "Illustrator"
+      ],
+      "link": "",
+      "images": [
+        "/uploads/b3e5b1c0-7ce8-4897-b255-bf57ce8affc4.png",
+        "/uploads/f85a528f-ab37-41e0-8a05-f1a0bba0723e.png",
+        "/uploads/a4f4f940-d532-4e90-ae31-2a8d22911554.png",
+        "/uploads/40f358b1-1191-4b11-94c7-69dcef1776bc.png",
+        "/uploads/368904ba-89aa-47d0-904b-e9db6c1b10f9.png",
+        "/uploads/ceb4fe76-0ceb-42ac-9c40-6d3e0ffaf8c9.png",
+        "/uploads/fb8b2af4-cf68-4283-a9b6-5e4dc8439a33.png",
+        "/uploads/2a9583bb-82d9-40a4-8ede-d26aa9eba489.png"
+      ],
+      "createdAt": "2026-09-29T20:40:22.211Z"
+    },
+    {
+      "id": "43c5747c-b3d3-4ee9-a21d-ea3708360163",
+      "title": "Save The Date",
+      "description": "",
+      "year": "2026",
+      "tags": [
+        "Print"
+      ],
+      "software": [
+        "Illustrator"
+      ],
+      "link": "",
+      "images": [
+        "/uploads/c7d0ccbe-14f5-4799-bbe9-ad79c2a2d036.png",
+        "/uploads/48c9d7c7-0bf0-4c97-b86f-dec2c188941a.png",
+        "/uploads/1d213733-4736-4f9c-9192-179ea9eada75.png",
+        "/uploads/0eb349d8-329c-4d09-9d9d-d504207fb398.png",
+        "/uploads/a080d197-058c-4339-bd69-e52d0e2aa337.png"
+      ],
+      "createdAt": "2026-09-29T20:43:57.303Z"
+    },
+    {
+      "id": "45ed32a1-170a-4698-a8d4-1e2d01e6331f",
+      "title": "Castle View Short Project",
+      "description": "",
+      "year": "2024",
+      "tags": [
+        "3D"
+      ],
+      "software": [
+        "Blender"
+      ],
+      "link": "https://youtu.be/gaYG8TSQWao?si=qXMRuP6_1qTDaOLn",
+      "images": [],
+      "createdAt": "2026-09-29T20:45:57.832Z"
+    },
+    {
+      "id": "aa74d039-eae4-4910-95cf-3fc54a30559f",
+      "title": "COMING SOON",
+      "description": "",
+      "year": "2026",
+      "tags": [
+        "3D/UI/DEV"
+      ],
+      "software": [
+        "Blender/Roblox Studio/VsCode"
+      ],
+      "link": "",
+      "images": [],
+      "createdAt": "2026-09-29T20:48:13.482Z"
+    }
+  ]
+}

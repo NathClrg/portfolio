@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <title>Portfolio Admin</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <!-- Login / first-time setup -->
+    <main id="auth-view" class="auth" hidden>
+      <form id="auth-form" class="panel auth-panel">
+        <h1 id="auth-title">Admin login</h1>
+        <p id="auth-intro" class="muted"></p>
+        <label>Username <input name="username" autocomplete="username" required /></label>
+        <label>Password <input name="password" type="password" autocomplete="current-password" required minlength="8" /></label>
+        <label id="confirm-field" hidden>Confirm password <input name="confirm" type="password" autocomplete="new-password" /></label>
+        <p id="auth-error" class="error" role="alert"></p>
+        <button class="primary" type="submit" id="auth-submit">Log in</button>
+        <a class="muted small" href="/">← Back to the temple</a>
+      </form>
+    </main>
+
+    <!-- Dashboard -->
+    <div id="dash-view" hidden>
+      <header class="topbar">
+        <strong>Portfolio admin</strong>
+        <nav>
+          <a href="/" target="_blank">View site ↗</a>
+          <button id="logout" class="ghost" type="button">Log out</button>
+        </nav>
+      </header>
+
+      <main class="dash">
+        <section class="panel">
+          <div class="section-head">
+            <h2>Works</h2>
+            <button id="add-work" class="primary" type="button">+ Add work</button>
+          </div>
+          <p class="muted small">Each work gets a pedestal in the temple, in this order. Visitors press E to bring it forward.</p>
+          <ul id="works" class="works"></ul>
+          <p id="works-empty" class="muted" hidden>No works yet — add your first one.</p>
+        </section>
+
+        <section class="panel">
+          <h2>Site</h2>
+          <form id="site-form" class="stack">
+            <label>Title <input name="title" maxlength="120" /></label>
+            <label>Subtitle <textarea name="subtitle" rows="2" maxlength="400"></textarea></label>
+            <label>
+              Search engine description
+              <textarea name="description" rows="3" maxlength="300" placeholder="Leave empty to generate one from your works"></textarea>
+              <span class="small">Shown under your site in Google results and in link previews. Aim for 120–160 characters, in French.</span>
+            </label>
+            <button class="primary" type="submit">Save</button>
+          </form>
+        </section>
+
+        <section class="panel">
+          <h2>Password</h2>
+          <form id="password-form" class="stack">
+            <label>Current password <input name="current" type="password" autocomplete="current-password" required /></label>
+            <label>New password <input name="next" type="password" autocomplete="new-password" minlength="8" required /></label>
+            <button type="submit">Change password</button>
+          </form>
+        </section>
+      </main>
+    </div>
+
+    <!-- Work editor -->
+    <dialog id="work-dialog">
+      <form id="work-form" class="stack" method="dialog">
+        <h2 id="work-dialog-title">Add work</h2>
+        <label>Title * <input name="title" required maxlength="120" /></label>
+        <div class="row">
+          <label>Year <input name="year" maxlength="20" placeholder="2026" /></label>
+          <label>Tags <input name="tags" placeholder="3D, UI, Branding" /></label>
+        </div>
+        <label>Software used <input name="software" maxlength="300" placeholder="Blender, Substance Painter, Photoshop" /></label>
+        <label>Link <input name="link" type="url" placeholder="https://…" /></label>
+        <label>Description <textarea name="description" rows="5" maxlength="4000"></textarea></label>
+        <div class="field">
+          <div class="field-head">
+            <span>Images</span>
+            <span id="image-count" class="small"></span>
+          </div>
+          <ul id="gallery" class="gallery"></ul>
+          <div class="drop" id="drop">
+            <span>Drop images here or <u>browse</u><br /><small>JPG, PNG, WebP or GIF · max 15 MB each · up to 20</small></span>
+            <!-- No name: the files are appended to the form data in gallery order on submit. -->
+            <input id="image-input" type="file" multiple accept="image/jpeg,image/png,image/webp,image/gif" />
+          </div>
+          <p class="small">The first image is the cover shown on the pedestal. Visitors can flip through the others.</p>
+        </div>
+        <p id="work-error" class="error" role="alert"></p>
+        <div class="actions">
+          <button type="button" id="cancel-work" class="ghost">Cancel</button>
+          <button type="submit" class="primary" id="save-work">Save</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div id="toast" role="status"></div>
+
+    <script type="module" src="/src/admin.js"></script>
+  </body>
+</html>

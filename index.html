@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Title, description, social previews, structured data and the site data: see render.js -->
+    <!--app-head-->
+    <meta name="theme-color" content="#1d1b3f" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Inter:wght@400;500&display=swap" rel="stylesheet" />
+    <noscript><style>#list-view[hidden] { display: block !important; } #loader, #list-open, #list-close { display: none !important; }</style></noscript>
+  </head>
+  <body>
+    <canvas id="scene" role="img" aria-label="Temple 3D interactif où sont exposées les œuvres"></canvas>
+
+    <div id="loader"><span>Entrée dans le temple…</span></div>
+
+    <header id="hud">
+      <!--app-hud-->
+      <button id="list-open" type="button">Voir toutes les œuvres</button>
+    </header>
+
+    <div id="help">
+      <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / <kbd>Z</kbd><kbd>Q</kbd><kbd>S</kbd><kbd>D</kbd> se déplacer</span>
+      <span><kbd>Maj</kbd> courir</span>
+      <span>Glisser pour regarder · Molette pour zoomer</span>
+      <span><kbd>E</kbd> près d’une œuvre pour la voir</span>
+      <span><kbd>←</kbd><kbd>→</kbd> changer d’image</span>
+    </div>
+
+    <div id="prompt">
+      <kbd class="big">E</kbd>
+      <div>
+        <small>Appuyer pour voir</small>
+        <strong id="prompt-title"></strong>
+      </div>
+    </div>
+
+    <article id="card">
+      <p id="card-meta"></p>
+      <h2 id="card-title"></h2>
+      <div id="card-gallery" hidden>
+        <div class="gallery-nav">
+          <button id="img-prev" type="button" aria-label="Image précédente">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3 5 8l5 5" /></svg>
+          </button>
+          <span id="img-count"></span>
+          <button id="img-next" type="button" aria-label="Image suivante">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m6 3 5 5-5 5" /></svg>
+          </button>
+          <small class="keys-only"><kbd>←</kbd><kbd>→</kbd></small>
+        </div>
+        <div id="card-thumbs"></div>
+      </div>
+      <p id="card-description"></p>
+      <div id="card-software" hidden>
+        <small>Logiciels</small>
+        <ul id="card-software-list"></ul>
+      </div>
+      <a id="card-link" target="_blank" rel="noopener noreferrer">Voir le projet ↗</a>
+      <small class="release">Appuyez sur <kbd>E</kbd> pour la reposer</small>
+    </article>
+
+    <!-- Every work as plain HTML: the accessible alternative to the 3D temple, and what search engines index. -->
+    <main id="list-view" aria-labelledby="list-title" tabindex="-1" hidden>
+      <div class="list-inner">
+        <div class="list-head">
+          <h2 id="list-title">Toutes les œuvres</h2>
+          <button id="list-close" type="button">Retour au temple</button>
+        </div>
+        <!--app-works-->
+      </div>
+    </main>
+
+    <div id="touch-controls">
+      <div id="joystick"><div id="joystick-knob"></div></div>
+      <button id="touch-e" type="button" aria-label="Voir l’œuvre">E</button>
+    </div>
+
+    <!--app-admin-->
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

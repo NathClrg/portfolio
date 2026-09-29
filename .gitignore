@@ -1,0 +1,7 @@
+node_modules
+dist
+
+# Admin login (password hash) and the token signing secret: never publish these.
+data/admin.json
+data/secret.json
+data/*.tmp
