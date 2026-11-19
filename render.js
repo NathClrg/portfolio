@@ -2,6 +2,7 @@
 // the page heading and the list of works (the 3D temple itself is invisible to crawlers).
 // Used by the Vite plugin (dev server + GitHub Pages build) and by server.js in production.
 import fs from 'node:fs';
+import { cleanVideos, youtubeEmbed, youtubeId, youtubeThumb } from './src/youtube.js';
 
 /** The public address of the site, from "homepage" in package.json. */
 export const SITE_URL = JSON.parse(fs.readFileSync(new URL('./package.json', import.meta.url), 'utf8')).homepage;
@@ -18,7 +19,12 @@ const DEFAULT_SITE = {
 
 // Works saved before multi-image support have a single `image` field.
 function normalizeWork({ image, ...work }) {
-  return { ...work, images: work.images ?? (image ? [image] : []), software: work.software ?? [] };
+  return {
+    ...work,
+    images: work.images ?? (image ? [image] : []),
+    software: work.software ?? [],
+    videos: cleanVideos(work.videos),
+  };
 }
 
 export function normalizeSite(raw) {
@@ -99,6 +105,16 @@ function head(site, { siteUrl, asset, absolute }) {
             ...(w.images.length && { image: w.images.map(absolute) }),
             ...(keywords.length && { keywords: keywords.join(', ') }),
             ...(isHttp(w.link) && { url: w.link }),
+            ...(w.videos.length && {
+              video: w.videos.map((url) => ({
+                '@type': 'VideoObject',
+                name: w.title,
+                ...(w.description && { description: w.description }),
+                thumbnailUrl: youtubeThumb(youtubeId(url)),
+                embedUrl: youtubeEmbed(url),
+                url,
+              })),
+            }),
             inLanguage: LANG,
             creator: { '@id': authorId },
           };
@@ -151,6 +167,16 @@ function workList(site, { asset }) {
         return `<img src="${escapeHtml(asset(src))}" alt="${escapeHtml(alt)}" loading="lazy" decoding="async" />`;
       })
       .join('');
+    const videos = w.videos
+      .map((url, n) => {
+        const label = w.videos.length > 1 ? `${w.title} — vidéo ${n + 1}` : `${w.title} — vidéo`;
+        return (
+          `<a class="yt" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" data-embed="${escapeHtml(youtubeEmbed(url, { autoplay: true }))}">` +
+          `<img src="${escapeHtml(youtubeThumb(youtubeId(url)))}" alt="" loading="lazy" decoding="async" />` +
+          `<span class="yt-play" aria-hidden="true"></span><span class="visually-hidden">Lire : ${escapeHtml(label)}</span></a>`
+        );
+      })
+      .join('');
     const link = isHttp(w.link)
       ? `<a href="${escapeHtml(w.link)}" target="_blank" rel="noopener noreferrer">Voir le projet<span class="visually-hidden"> ${escapeHtml(w.title)}</span> ↗</a>`
       : '';
@@ -160,6 +186,7 @@ function workList(site, { asset }) {
       meta && `<p class="work-meta">${escapeHtml(meta)}</p>`,
       w.description && `<p class="work-description">${escapeHtml(w.description)}</p>`,
       w.software.length && `<p class="work-software">Logiciels : ${escapeHtml(w.software.join(', '))}</p>`,
+      videos && `<div class="work-videos">${videos}</div>`,
       images && `<div class="work-images">${images}</div>`,
       `<p class="work-actions"><button type="button" data-visit="${escapeHtml(w.id)}">Voir dans le temple</button>${link}</p>`,
       `</article></li>`,
@@ -173,9 +200,9 @@ function workList(site, { asset }) {
 /**
  * Fills the <!--app-*--> placeholders of index.html.
  * `base` is the path the site is served under (e.g. /portfolio/ on GitHub Pages);
- * `admin` adds the link to the admin panel, which only exists where the Node server runs.
+ * `admin` adds the ⚙ link to the admin panel (local server, or the GitHub-backed one on Pages).
  */
-export function renderIndex(html, site, { siteUrl = SITE_URL, base = '/', admin = false } = {}) {
+export function renderIndex(html, site, { siteUrl = SITE_URL, base = '/', admin = true } = {}) {
   const asset = (url) => (url.startsWith('/') ? base + url.slice(1) : url);
   const absolute = (url) => new URL(url.replace(/^\//, ''), siteUrl).href;
   const ctx = { siteUrl, asset, absolute };
@@ -184,7 +211,7 @@ export function renderIndex(html, site, { siteUrl = SITE_URL, base = '/', admin 
     .replace('<!--app-head-->', () => head(site, ctx))
     .replace('<!--app-hud-->', () => hud(site))
     .replace('<!--app-works-->', () => workList(site, ctx))
-    .replace('<!--app-admin-->', () => (admin ? '<a id="admin-link" href="/admin.html" aria-label="Administration" rel="nofollow">⚙</a>' : ''));
+    .replace('<!--app-admin-->', () => (admin ? `<a id="admin-link" href="${base}admin/" aria-label="Administration" rel="nofollow">⚙</a>` : ''));
 }
 
 export function sitemapXml(site, siteUrl = SITE_URL) {

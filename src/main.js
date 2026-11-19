@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { createCharacter } from './character.js';
 import { createInput } from './input.js';
 import { buildWorld } from './world.js';
+import { youtubeEmbed, youtubeId, youtubeThumb } from './youtube.js';
 import './style.css';
 
 const $ = (id) => document.getElementById(id);
@@ -50,11 +51,11 @@ resize();
 
 // ---------- player + camera state ----------
 const player = {
-  pos: new THREE.Vector3(0, 0, 2.6),
+  pos: new THREE.Vector3(0, 0, 1.4), // close enough to the middle that the camera starts inside the ring
   vel: new THREE.Vector3(),
   heading: Math.PI, // facing -Z, across the brazier
 };
-const cam = { yaw: 0, pitch: 0.32, dist: 6.5, smoothDist: 6.5, target: new THREE.Vector3(0, 1.5, 2.6) };
+const cam = { yaw: 0, pitch: 0.32, dist: 6.5, smoothDist: 6.5, target: new THREE.Vector3(0, 1.5, 1.4) };
 const raycaster = new THREE.Raycaster();
 
 const tmp = new THREE.Vector3();
@@ -182,6 +183,8 @@ function showCard(work) {
     ...software.map((name) => Object.assign(document.createElement('li'), { textContent: name })),
   );
 
+  renderVideos(work.videos || []);
+
   const images = work.images || [];
   $('card-gallery').hidden = images.length < 2;
   $('card-thumbs').replaceChildren(
@@ -195,7 +198,41 @@ function showCard(work) {
     }),
   );
   updateGallery();
+  $('card').scrollTop = 0;
   $('card').classList.add('visible');
+  document.body.classList.add('card-open');
+}
+
+// ---------- YouTube: a thumbnail first, the real player only once the visitor taps play ----------
+function videoFacade(url, label) {
+  const id = youtubeId(url);
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'yt';
+  button.setAttribute('aria-label', `Lire la vidéo : ${label}`);
+  button.append(Object.assign(document.createElement('img'), { src: youtubeThumb(id), alt: '', loading: 'lazy' }));
+  button.append(Object.assign(document.createElement('span'), { className: 'yt-play' }));
+  button.addEventListener('click', () => button.replaceWith(videoFrame(youtubeEmbed(url, { autoplay: true }), label)));
+  return button;
+}
+
+function videoFrame(src, label) {
+  const frame = document.createElement('iframe');
+  frame.className = 'yt-frame';
+  frame.src = src;
+  frame.title = label;
+  frame.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen';
+  frame.allowFullscreen = true;
+  frame.referrerPolicy = 'strict-origin-when-cross-origin';
+  return frame;
+}
+
+function renderVideos(videos) {
+  const box = $('card-videos');
+  box.hidden = !videos.length;
+  box.replaceChildren(
+    ...videos.map((url, i) => videoFacade(url, videos.length > 1 ? `${focused.work.title} (${i + 1})` : focused.work.title)),
+  );
 }
 
 function updateGallery() {
@@ -229,6 +266,31 @@ function openWork(display) {
 function closeWork() {
   focused = null;
   $('card').classList.remove('visible');
+  document.body.classList.remove('card-open');
+  $('card-videos').replaceChildren(); // stops any video still playing
+}
+$('card-close').addEventListener('click', () => input.press('KeyE'));
+
+// Touch: tap the prompt to open, swipe the sheet down to close.
+$('prompt').addEventListener('click', () => input.press('KeyE'));
+{
+  const card = $('card');
+  let startY = null;
+  card.addEventListener('touchstart', (e) => {
+    startY = card.scrollTop <= 0 ? e.touches[0].clientY : null;
+  }, { passive: true });
+  card.addEventListener('touchmove', (e) => {
+    if (startY === null) return;
+    const dy = Math.max(0, e.touches[0].clientY - startY);
+    card.style.translate = dy ? `0 ${dy}px` : '';
+  }, { passive: true });
+  card.addEventListener('touchend', (e) => {
+    if (startY === null) return;
+    const dy = e.changedTouches[0].clientY - startY;
+    startY = null;
+    card.style.translate = '';
+    if (dy > 90 && focused) input.press('KeyE');
+  });
 }
 
 /** Puts the player in front of a work's pedestal, camera behind them, and brings the work forward. */
@@ -256,6 +318,12 @@ $('list-open').addEventListener('click', () => setListOpen(true));
 $('list-close').addEventListener('click', () => setListOpen(false));
 addEventListener('keydown', (e) => e.code === 'Escape' && !listView.hidden && setListOpen(false));
 listView.addEventListener('click', (e) => {
+  const yt = e.target.closest('a.yt[data-embed]');
+  if (yt) {
+    e.preventDefault();
+    yt.replaceWith(videoFrame(yt.dataset.embed, yt.textContent.trim() || 'Vidéo'));
+    return;
+  }
   const id = e.target.closest('[data-visit]')?.dataset.visit;
   const display = id && world.displays.find((d) => d.work.id === id);
   if (!display) return;
@@ -308,8 +376,9 @@ function computeFocusPose(display, time) {
   const h = display.size.y + 0.18;
   const wide = camera.aspect > 1.1;
   // Fraction of the screen the frame may occupy; the info card takes the rest.
-  const fracW = wide ? 0.5 : 0.8;
-  const fracH = wide ? 0.7 : 0.4;
+  const short = innerHeight < 520; // landscape phone: the card takes almost half the width
+  const fracW = wide ? (short ? 0.42 : 0.5) : 0.84;
+  const fracH = wide ? 0.7 : 0.34;
   const dist = Math.max(h / (fracH * 2 * tanHalf), w / (fracW * 2 * tanHalf * camera.aspect));
   const visibleH = 2 * dist * tanHalf;
   const visibleW = visibleH * camera.aspect;
@@ -320,8 +389,8 @@ function computeFocusPose(display, time) {
   focusPos
     .copy(camera.position)
     .addScaledVector(camDir, dist)
-    .addScaledVector(camRight, wide ? -visibleW * 0.2 : 0)
-    .addScaledVector(camUp, wide ? 0 : visibleH * 0.22);
+    .addScaledVector(camRight, wide ? -visibleW * (short ? 0.25 : 0.2) : 0)
+    .addScaledVector(camUp, wide ? 0 : visibleH * 0.27);
   swayEuler.set(Math.sin(time * 0.9) * 0.03, Math.sin(time * 0.6) * 0.06, 0);
   focusQuat.copy(camera.quaternion).multiply(sway.setFromEuler(swayEuler));
 }
@@ -381,11 +450,26 @@ function frame() {
   renderer.render(scene, camera);
 }
 
-const hideLoader = () => $('loader').classList.add('done');
+const touch = matchMedia('(pointer: coarse)').matches;
+if (touch) document.body.classList.add('touch');
+
+// A short how-to for touch screens, once the temple is visible: gone after a few seconds or the first touch.
+function showTouchHint() {
+  if (!touch) return;
+  const hint = $('touch-hint');
+  const hide = () => hint.classList.remove('show');
+  hint.classList.add('show');
+  setTimeout(hide, 6000);
+  addEventListener('pointerdown', hide, { once: true });
+}
+
+const hideLoader = () => {
+  if ($('loader').classList.contains('done')) return;
+  $('loader').classList.add('done');
+  showTouchHint();
+};
 loadingManager.onLoad = hideLoader;
 setTimeout(hideLoader, 4000); // don't block on a broken image
 if (!site.works.some((w) => w.images?.length)) hideLoader();
-
-if (matchMedia('(pointer: coarse)').matches) document.body.classList.add('touch');
 
 frame();

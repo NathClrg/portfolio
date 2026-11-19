@@ -31,9 +31,21 @@ export function createInput(canvas, { joystick, knob, interactButton }) {
     canvas.setPointerCapture(e.pointerId);
     canvas.classList.add('dragging');
   });
+  const spread = () => {
+    const [a, b] = drags.values();
+    return Math.hypot(a.x - b.x, a.y - b.y);
+  };
   canvas.addEventListener('pointermove', (e) => {
     const last = drags.get(e.pointerId);
     if (!last) return;
+    if (drags.size === 2) {
+      // Two fingers: pinch to zoom instead of looking around.
+      const before = spread();
+      last.x = e.clientX;
+      last.y = e.clientY;
+      state.zoom += (before - spread()) * 0.025;
+      return;
+    }
     state.lookX += e.clientX - last.x;
     state.lookY += e.clientY - last.y;
     last.x = e.clientX;
@@ -112,6 +124,10 @@ export function createInput(canvas, { joystick, knob, interactButton }) {
     },
     get running() {
       return keys.has('ShiftLeft') || keys.has('ShiftRight') || Math.hypot(state.stick.x, state.stick.y) > 0.9;
+    },
+    /** Acts like a key press, e.g. from an on-screen button. */
+    press(code) {
+      if (enabled) presses.add(code);
     },
     /** Returns and resets the key codes pressed since the last call (key repeat ignored). */
     consumePresses() {

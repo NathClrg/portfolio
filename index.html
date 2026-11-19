@@ -2,7 +2,7 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <!-- Title, description, social previews, structured data and the site data: see render.js -->
     <!--app-head-->
     <meta name="theme-color" content="#1d1b3f" />
@@ -19,7 +19,7 @@
 
     <header id="hud">
       <!--app-hud-->
-      <button id="list-open" type="button">Voir toutes les œuvres</button>
+      <button id="list-open" type="button"><span class="long">Voir toutes les œuvres</span><span class="short">Toutes les œuvres</span></button>
     </header>
 
     <div id="help">
@@ -30,17 +30,24 @@
       <span><kbd>←</kbd><kbd>→</kbd> changer d’image</span>
     </div>
 
-    <div id="prompt">
+    <p id="touch-hint" aria-hidden="true">Joystick pour marcher · glisser pour regarder · pincer pour zoomer</p>
+
+    <div id="prompt" role="button" tabindex="-1">
       <kbd class="big">E</kbd>
       <div>
-        <small>Appuyer pour voir</small>
+        <small><span class="keys-only">Appuyer pour voir</span><span class="touch-only">Toucher pour voir</span></small>
         <strong id="prompt-title"></strong>
       </div>
     </div>
 
-    <article id="card">
+    <article id="card" aria-live="polite">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <button id="card-close" type="button" aria-label="Fermer">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 4 8 8M12 4l-8 8" /></svg>
+      </button>
       <p id="card-meta"></p>
       <h2 id="card-title"></h2>
+      <div id="card-videos" hidden></div>
       <div id="card-gallery" hidden>
         <div class="gallery-nav">
           <button id="img-prev" type="button" aria-label="Image précédente">
@@ -60,7 +67,7 @@
         <ul id="card-software-list"></ul>
       </div>
       <a id="card-link" target="_blank" rel="noopener noreferrer">Voir le projet ↗</a>
-      <small class="release">Appuyez sur <kbd>E</kbd> pour la reposer</small>
+      <small class="release keys-only">Appuyez sur <kbd>E</kbd> pour la reposer</small>
     </article>
 
     <!-- Every work as plain HTML: the accessible alternative to the 3D temple, and what search engines index. -->

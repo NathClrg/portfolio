@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { buildScenery } from './scenery.js';
 import { incomingTexture, placeholderTexture, plaqueTexture, seededRandom } from './textures.js';
+import { youtubeId, youtubeThumb } from './youtube.js';
 
 const COLORS = {
   stone: 0xdcc9a6,
@@ -305,7 +306,12 @@ export function buildWorld(scene, works, textureLoader, renderer) {
     // The frame is what gets pulled towards the camera.
     const frame = new THREE.Group();
     const border = mesh(new THREE.BoxGeometry(1, 1, 0.08), frameMat());
-    const imageMat = new THREE.MeshBasicMaterial({ map: placeholderTexture(work.title), toneMapped: false });
+    // A work with only videos shows the first one's YouTube thumbnail (or a ▶ placeholder if it can't load).
+    const videoOnly = !work.images?.length && work.videos?.length > 0;
+    const imageMat = new THREE.MeshBasicMaterial({
+      map: placeholderTexture(videoOnly ? `▶  ${work.title}` : work.title),
+      toneMapped: false,
+    });
     const image = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), imageMat);
     image.position.z = 0.045;
     frame.add(border, image);
@@ -342,7 +348,7 @@ export function buildWorld(scene, works, textureLoader, renderer) {
     };
     setAspect(4 / 3);
 
-    const images = work.images || [];
+    const images = videoOnly ? [youtubeThumb(youtubeId(work.videos[0]))] : work.images || [];
     const placeholder = imageMat.map;
     const textures = [];
     const loadTexture = (i) =>

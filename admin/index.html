@@ -2,8 +2,9 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="robots" content="noindex" />
+    <meta name="theme-color" content="#17152b" />
     <title>Portfolio Admin</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -16,12 +17,20 @@
       <form id="auth-form" class="panel auth-panel">
         <h1 id="auth-title">Admin login</h1>
         <p id="auth-intro" class="muted"></p>
-        <label>Username <input name="username" autocomplete="username" required /></label>
+        <label>Username <input name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required /></label>
         <label>Password <input name="password" type="password" autocomplete="current-password" required minlength="8" /></label>
         <label id="confirm-field" hidden>Confirm password <input name="confirm" type="password" autocomplete="new-password" /></label>
+        <label id="token-field" hidden>
+          GitHub token
+          <input name="token" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_…" />
+          <span class="small">
+            <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener noreferrer">Create a fine-grained token ↗</a>
+            with access to only this repository and the permission <b>Contents: Read and write</b>.
+          </span>
+        </label>
         <p id="auth-error" class="error" role="alert"></p>
         <button class="primary" type="submit" id="auth-submit">Log in</button>
-        <a class="muted small" href="/">← Back to the temple</a>
+        <a class="muted small" href="../">← Back to the temple</a>
       </form>
     </main>
 
@@ -30,12 +39,14 @@
       <header class="topbar">
         <strong>Portfolio admin</strong>
         <nav>
-          <a href="/" target="_blank">View site ↗</a>
-          <button id="logout" class="ghost" type="button">Log out</button>
+          <a href="../" target="_blank">View site ↗</a>
+          <button id="logout" class="ghost small" type="button">Log out</button>
         </nav>
       </header>
 
       <main class="dash">
+        <p id="pages-note" class="note small" hidden>Each save is published to GitHub and appears on the live site about a minute later.</p>
+
         <section class="panel">
           <div class="section-head">
             <h2>Works</h2>
@@ -63,6 +74,7 @@
         <section class="panel">
           <h2>Password</h2>
           <form id="password-form" class="stack">
+            <input name="username" autocomplete="username" value="admin" hidden />
             <label>Current password <input name="current" type="password" autocomplete="current-password" required /></label>
             <label>New password <input name="next" type="password" autocomplete="new-password" minlength="8" required /></label>
             <button type="submit">Change password</button>
@@ -74,14 +86,23 @@
     <!-- Work editor -->
     <dialog id="work-dialog">
       <form id="work-form" class="stack" method="dialog">
-        <h2 id="work-dialog-title">Add work</h2>
+        <div class="dialog-head">
+          <h2 id="work-dialog-title">Add work</h2>
+          <button type="button" id="close-work" class="ghost small icon" aria-label="Close">✕</button>
+        </div>
         <label>Title * <input name="title" required maxlength="120" /></label>
         <div class="row">
-          <label>Year <input name="year" maxlength="20" placeholder="2026" /></label>
+          <label>Year <input name="year" maxlength="20" placeholder="2026" inputmode="numeric" /></label>
           <label>Tags <input name="tags" placeholder="3D, UI, Branding" /></label>
         </div>
         <label>Software used <input name="software" maxlength="300" placeholder="Blender, Substance Painter, Photoshop" /></label>
         <label>Link <input name="link" type="url" placeholder="https://…" /></label>
+        <label>
+          YouTube videos
+          <textarea name="videos" rows="2" placeholder="https://youtu.be/…  (one link per line)" spellcheck="false"></textarea>
+          <span class="small">Played right on the site, in the work’s card. Shorts and links with a start time work too.</span>
+        </label>
+        <ul id="video-preview" class="video-preview"></ul>
         <label>Description <textarea name="description" rows="5" maxlength="4000"></textarea></label>
         <div class="field">
           <div class="field-head">
@@ -91,10 +112,10 @@
           <ul id="gallery" class="gallery"></ul>
           <div class="drop" id="drop">
             <span>Drop images here or <u>browse</u><br /><small>JPG, PNG, WebP or GIF · max 15 MB each · up to 20</small></span>
-            <!-- No name: the files are appended to the form data in gallery order on submit. -->
+            <!-- No name: the files are sent in gallery order on submit. -->
             <input id="image-input" type="file" multiple accept="image/jpeg,image/png,image/webp,image/gif" />
           </div>
-          <p class="small">The first image is the cover shown on the pedestal. Visitors can flip through the others.</p>
+          <p class="small">The first image is the cover shown on the pedestal. Visitors can flip through the others. With no image, the video’s thumbnail is the cover.</p>
         </div>
         <p id="work-error" class="error" role="alert"></p>
         <div class="actions">

@@ -1,32 +1,51 @@
 import './admin.css';
+import { MAX_IMAGE_SIZE, MAX_IMAGES, IMAGE_TYPES, workFields } from './admin-common.js';
+import { githubBackend } from './admin-github.js';
+import { localBackend } from './admin-local.js';
+import { youtubeId, youtubeThumb } from './youtube.js';
+
+// On GitHub Pages there is no server: saves become commits. Locally, the Express API does the work.
+/* global __ADMIN_REPO__ */
+const backend = import.meta.env.MODE === 'pages' ? githubBackend(__ADMIN_REPO__) : localBackend();
+backend.onExpired = () => showAuth();
 
 const $ = (id) => document.getElementById(id);
-const TOKEN_KEY = 'portfolio-admin-token';
-
-let token = localStorage.getItem(TOKEN_KEY);
 let works = [];
-
-async function api(path, { method = 'GET', body, form } = {}) {
-  const headers = {};
-  if (token) headers.Authorization = `Bearer ${token}`;
-  if (body) headers['Content-Type'] = 'application/json';
-  const res = await fetch(path, { method, headers, body: form || (body && JSON.stringify(body)) });
-  const data = await res.json().catch(() => ({}));
-  if (res.status === 401 && token && path !== '/api/login') {
-    logout();
-    throw new Error('Session expired, please log in again');
-  }
-  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
-  return data;
-}
 
 function toast(message, isError = false) {
   const el = $('toast');
+  // A modal dialog sits in the top layer: put the toast inside it so it stays visible.
+  const host = $('work-dialog').open ? $('work-dialog') : document.body;
+  if (el.parentElement !== host) host.append(el);
   el.textContent = message;
   el.classList.toggle('error', isError);
   el.classList.add('visible');
   clearTimeout(toast.timer);
-  toast.timer = setTimeout(() => el.classList.remove('visible'), 2600);
+  toast.timer = setTimeout(() => el.classList.remove('visible'), isError ? 6000 : 3200);
+}
+
+/** Runs a save, with a busy state on `button` and a toast at the end. */
+async function busy(button, label, task, done) {
+  const before = button?.textContent;
+  if (button) {
+    button.disabled = true;
+    button.textContent = label;
+  }
+  document.body.classList.add('saving');
+  try {
+    const out = await task();
+    if (done) toast(done + backend.savedNote);
+    return out;
+  } catch (err) {
+    toast(err.message, true);
+    throw err;
+  } finally {
+    document.body.classList.remove('saving');
+    if (button) {
+      button.disabled = false;
+      button.textContent = before;
+    }
+  }
 }
 
 // ---------- auth ----------
@@ -35,17 +54,29 @@ let setupMode = false;
 async function showAuth() {
   $('dash-view').hidden = true;
   $('auth-view').hidden = false;
-  const { setup } = await api('/api/status');
-  setupMode = !setup;
+  $('auth-error').textContent = '';
+  let status;
+  try {
+    status = await backend.status();
+  } catch (err) {
+    $('auth-error').textContent = err.message;
+    return;
+  }
+  setupMode = !status.setup;
+  const form = $('auth-form');
   $('auth-title').textContent = setupMode ? 'Create your admin account' : 'Admin login';
-  $('auth-intro').textContent = setupMode
-    ? 'First time here: choose the username and password you will use to manage your portfolio.'
-    : '';
   $('auth-intro').hidden = !setupMode;
+  $('auth-intro').textContent =
+    backend.kind === 'github'
+      ? 'First time here: choose your username and password, and paste a GitHub token so the admin can publish your changes. The token is stored encrypted with your password.'
+      : 'First time here: choose the username and password you will use to manage your portfolio.';
   $('confirm-field').hidden = !setupMode;
+  $('token-field').hidden = !(setupMode && status.needsToken);
+  form.token.required = setupMode && status.needsToken;
   $('auth-submit').textContent = setupMode ? 'Create account' : 'Log in';
-  $('auth-form').password.autocomplete = setupMode ? 'new-password' : 'current-password';
-  $('auth-form').username.focus();
+  form.password.autocomplete = setupMode ? 'new-password' : 'current-password';
+  if (setupMode && !form.username.value) form.username.value = 'admin';
+  form.username.focus();
 }
 
 $('auth-form').addEventListener('submit', async (e) => {
@@ -56,36 +87,35 @@ $('auth-form').addEventListener('submit', async (e) => {
     $('auth-error').textContent = 'Passwords do not match';
     return;
   }
+  const submit = $('auth-submit');
+  const label = submit.textContent;
+  submit.disabled = true;
+  submit.textContent = setupMode ? 'Setting up…' : 'Logging in…';
   try {
-    const data = await api(setupMode ? '/api/setup' : '/api/login', {
-      method: 'POST',
-      body: { username: f.username.value.trim(), password: f.password.value },
-    });
-    setToken(data.token);
+    const username = f.username.value.trim();
+    if (setupMode) await backend.setup(username, f.password.value, f.token.value);
+    else await backend.login(username, f.password.value);
     f.reset();
-    showDashboard();
+    await showDashboard();
   } catch (err) {
     $('auth-error').textContent = err.message;
+  } finally {
+    submit.disabled = false;
+    submit.textContent = label;
   }
 });
 
-function setToken(t) {
-  token = t;
-  localStorage.setItem(TOKEN_KEY, t);
-}
-
-function logout() {
-  token = null;
-  localStorage.removeItem(TOKEN_KEY);
+$('logout').addEventListener('click', () => {
+  backend.logout();
   showAuth();
-}
-$('logout').addEventListener('click', logout);
+});
 
 // ---------- dashboard ----------
 async function showDashboard() {
   $('auth-view').hidden = true;
   $('dash-view').hidden = false;
-  const site = await api('/api/site');
+  $('pages-note').hidden = backend.kind !== 'github';
+  const site = await backend.getSite();
   $('site-form').elements.title.value = site.title;
   $('site-form').elements.subtitle.value = site.subtitle;
   $('site-form').elements.description.value = site.description || '';
@@ -93,15 +123,22 @@ async function showDashboard() {
   renderWorks();
 }
 
-function btn(label, title, onClick, disabled = false) {
+function btn(label, title, onClick, disabled = false, extra = '') {
   const b = document.createElement('button');
   b.type = 'button';
-  b.className = 'ghost small';
+  b.className = `ghost small ${extra}`.trim();
   b.textContent = label;
   b.title = title;
+  b.setAttribute('aria-label', title);
   b.disabled = disabled;
   b.addEventListener('click', onClick);
   return b;
+}
+
+function coverOf(work) {
+  if (work.images.length) return backend.imageUrl(work.images[0]);
+  const id = work.videos?.length && youtubeId(work.videos[0]);
+  return id ? youtubeThumb(id) : null;
 }
 
 function renderWorks() {
@@ -115,16 +152,12 @@ function renderWorks() {
 
     const thumb = document.createElement('div');
     thumb.className = 'thumb';
-    if (work.images.length) {
-      const img = document.createElement('img');
-      img.src = work.images[0];
-      img.alt = '';
-      thumb.append(img);
-    }
-    if (work.images.length > 1) {
+    const cover = coverOf(work);
+    if (cover) thumb.append(Object.assign(document.createElement('img'), { src: cover, alt: '' }));
+    const counts = [work.images.length > 1 && `${work.images.length}`, work.videos?.length && `▶ ${work.videos.length}`].filter(Boolean);
+    if (counts.length) {
       const count = document.createElement('span');
-      count.textContent = work.images.length;
-      count.title = `${work.images.length} images`;
+      count.textContent = counts.join(' · ');
       thumb.append(count);
     }
 
@@ -136,20 +169,14 @@ function renderWorks() {
     meta.className = 'muted small';
     meta.textContent = [work.year, ...(work.tags || [])].filter(Boolean).join(' · ') || '—';
     info.append(title, meta);
-    if (work.software?.length) {
-      const software = document.createElement('span');
-      software.className = 'muted small';
-      software.textContent = `Made with ${work.software.join(', ')}`;
-      info.append(software);
-    }
 
     const actions = document.createElement('div');
     actions.className = 'work-actions';
     actions.append(
-      btn('↑', 'Move up', () => move(i, -1), i === 0),
-      btn('↓', 'Move down', () => move(i, 1), i === works.length - 1),
+      btn('↑', 'Move up', () => move(i, -1), i === 0, 'icon'),
+      btn('↓', 'Move down', () => move(i, 1), i === works.length - 1, 'icon'),
       btn('Edit', 'Edit', () => openEditor(work)),
-      btn('Delete', 'Delete', () => remove(work)),
+      btn('Delete', 'Delete', () => remove(work), false, 'danger'),
     );
 
     li.append(thumb, info, actions);
@@ -158,61 +185,48 @@ function renderWorks() {
 }
 
 async function move(index, delta) {
+  const before = works;
   const next = [...works];
   const [item] = next.splice(index, 1);
   next.splice(index + delta, 0, item);
   works = next;
   renderWorks();
   try {
-    works = await api('/api/works/reorder', { method: 'POST', body: { ids: works.map((w) => w.id) } });
-  } catch (err) {
-    toast(err.message, true);
+    works = await busy(null, '', () => backend.reorder(works.map((w) => w.id)), 'Order saved');
+    renderWorks();
+  } catch {
+    works = before;
+    renderWorks();
   }
 }
 
 async function remove(work) {
   if (!confirm(`Delete “${work.title}”? This cannot be undone.`)) return;
   try {
-    await api(`/api/works/${work.id}`, { method: 'DELETE' });
+    await busy(null, '', () => backend.deleteWork(work.id), 'Work deleted');
     works = works.filter((w) => w.id !== work.id);
     renderWorks();
-    toast('Work deleted');
-  } catch (err) {
-    toast(err.message, true);
-  }
+  } catch {}
 }
 
 $('site-form').addEventListener('submit', async (e) => {
   e.preventDefault();
-  try {
-    const { title, subtitle, description } = e.target.elements;
-    await api('/api/site', { method: 'PUT', body: { title: title.value, subtitle: subtitle.value, description: description.value } });
-    toast('Site saved');
-  } catch (err) {
-    toast(err.message, true);
-  }
+  const { title, subtitle, description } = e.target.elements;
+  await busy(e.submitter, 'Saving…', () =>
+    backend.saveSiteInfo({ title: title.value, subtitle: subtitle.value, description: description.value }),
+  'Site saved').catch(() => {});
 });
 
 $('password-form').addEventListener('submit', async (e) => {
   e.preventDefault();
+  const f = e.target;
   try {
-    const data = await api('/api/password', {
-      method: 'POST',
-      body: { current: e.target.current.value, next: e.target.next.value },
-    });
-    setToken(data.token);
-    e.target.reset();
-    toast('Password changed');
-  } catch (err) {
-    toast(err.message, true);
-  }
+    await busy(e.submitter, 'Saving…', () => backend.changePassword(f.current.value, f.next.value), 'Password changed');
+    f.reset();
+  } catch {}
 });
 
 // ---------- work editor ----------
-const MAX_IMAGES = 20;
-const MAX_IMAGE_SIZE = 15 * 1024 * 1024;
-const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-
 const dialog = $('work-dialog');
 const form = $('work-form');
 const imageInput = $('image-input');
@@ -229,10 +243,7 @@ function renderGallery() {
   gallery.replaceChildren();
   images.forEach((img, i) => {
     const li = document.createElement('li');
-    const pic = document.createElement('img');
-    pic.src = img.url;
-    pic.alt = '';
-    li.append(pic);
+    li.append(Object.assign(document.createElement('img'), { src: img.file ? img.url : backend.imageUrl(img.url), alt: '' }));
     if (i === 0) {
       const cover = document.createElement('span');
       cover.className = 'cover';
@@ -267,7 +278,7 @@ function removeImageAt(index) {
 
 function addFiles(files) {
   files = [...files];
-  const valid = files.filter((f) => IMAGE_TYPES.includes(f.type) && f.size <= MAX_IMAGE_SIZE);
+  const valid = files.filter((f) => f.type in IMAGE_TYPES && f.size <= MAX_IMAGE_SIZE);
   const room = MAX_IMAGES - images.length;
   for (const file of valid.slice(0, room)) images.push({ url: URL.createObjectURL(file), file });
   $('work-error').textContent =
@@ -278,6 +289,23 @@ function addFiles(files) {
         : '';
   renderGallery();
 }
+
+/** Shows which of the pasted links are recognised as YouTube videos. */
+function renderVideoPreview() {
+  const lines = form.elements.videos.value.split(/\s+/).filter(Boolean);
+  const preview = $('video-preview');
+  preview.replaceChildren(
+    ...lines.map((line) => {
+      const id = youtubeId(line);
+      const li = document.createElement('li');
+      li.className = id ? '' : 'bad';
+      if (id) li.append(Object.assign(document.createElement('img'), { src: youtubeThumb(id), alt: '' }));
+      li.append(Object.assign(document.createElement('span'), { textContent: id ? 'YouTube ✓' : 'Not a YouTube link' }));
+      return li;
+    }),
+  );
+}
+form.elements.videos.addEventListener('input', renderVideoPreview);
 
 function openEditor(work = null) {
   editing = work;
@@ -290,17 +318,20 @@ function openEditor(work = null) {
     form.elements.tags.value = (work.tags || []).join(', ');
     form.elements.software.value = (work.software || []).join(', ');
     form.elements.link.value = work.link;
+    form.elements.videos.value = (work.videos || []).join('\n');
     form.elements.description.value = work.description;
   }
+  renderVideoPreview();
   clearImages();
   images = (work?.images || []).map((url) => ({ url }));
   renderGallery();
   dialog.showModal();
-  form.elements.title.focus();
+  if (!matchMedia('(pointer: coarse)').matches) form.elements.title.focus();
 }
 
 $('add-work').addEventListener('click', () => openEditor());
 $('cancel-work').addEventListener('click', () => dialog.close());
+$('close-work').addEventListener('click', () => dialog.close());
 dialog.addEventListener('close', clearImages);
 
 imageInput.addEventListener('change', () => {
@@ -322,41 +353,42 @@ drop.addEventListener('drop', (e) => {
 
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const data = new FormData(form);
-  // Existing images are referenced by URL, new ones by their position among the uploaded files.
-  let uploads = 0;
-  const order = images.map((img) => {
-    if (!img.file) return img.url;
-    data.append('images', img.file);
-    return uploads++;
+  const el = form.elements;
+  const fields = workFields({
+    title: el.title.value,
+    year: el.year.value,
+    tags: el.tags.value,
+    software: el.software.value,
+    link: el.link.value,
+    videos: el.videos.value,
+    description: el.description.value,
   });
-  data.set('order', JSON.stringify(order));
-  const save = $('save-work');
-  save.disabled = true;
-  save.textContent = 'Saving…';
+  const bad = el.videos.value.split(/\s+/).filter((l) => l && !youtubeId(l));
+  if (bad.length) {
+    $('work-error').textContent = `Not a YouTube link: ${bad[0]}`;
+    return;
+  }
+  $('work-error').textContent = '';
+  const wasEditing = editing;
   try {
-    if (editing) {
-      const updated = await api(`/api/works/${editing.id}`, { method: 'PUT', form: data });
-      works = works.map((w) => (w.id === updated.id ? updated : w));
-    } else {
-      works = [...works, await api('/api/works', { method: 'POST', form: data })];
-    }
+    const saved = await busy($('save-work'), 'Saving…', () =>
+      wasEditing ? backend.updateWork(wasEditing.id, fields, images) : backend.addWork(fields, images),
+    wasEditing ? 'Work updated' : 'Work added');
+    works = wasEditing ? works.map((w) => (w.id === saved.id ? saved : w)) : [...works, saved];
     renderWorks();
     dialog.close();
-    toast(editing ? 'Work updated' : 'Work added');
   } catch (err) {
     $('work-error').textContent = err.message;
-  } finally {
-    save.disabled = false;
-    save.textContent = 'Save';
   }
 });
 
+// Warn before leaving mid-save (an interrupted save on GitHub is simply not committed, but the edit is lost).
+addEventListener('beforeunload', (e) => {
+  if (document.body.classList.contains('saving')) e.preventDefault();
+});
+
 // ---------- boot ----------
-if (token) {
-  api('/api/me')
-    .then(showDashboard)
-    .catch(showAuth);
-} else {
-  showAuth();
-}
+backend
+  .restore()
+  .then((ok) => (ok ? showDashboard() : showAuth()))
+  .catch(showAuth);

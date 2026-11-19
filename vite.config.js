@@ -4,6 +4,7 @@ import { defineConfig } from 'vite';
 import { SITE_URL, normalizeSite, renderIndex, sitemapXml } from './render.js';
 
 const ROOT = import.meta.dirname;
+const PKG = JSON.parse(fs.readFileSync(resolve(ROOT, 'package.json'), 'utf8'));
 
 function readSite() {
   try {
@@ -25,7 +26,8 @@ function sitePages(mode) {
   return {
     name: 'site-pages',
     transformIndexHtml(html, ctx) {
-      if (ctx.server || pages) return renderIndex(html, readSite(), { base, admin: !pages });
+      if (ctx.filename.includes('/admin/')) return; // the admin page has no placeholders
+      if (ctx.server || pages) return renderIndex(html, readSite(), { base });
     },
     generateBundle() {
       if (!pages) return;
@@ -43,13 +45,15 @@ export default defineConfig(({ mode }) => ({
   appType: 'mpa',
   base: mode === 'pages' ? new URL(SITE_URL).pathname : '/',
   plugins: [sitePages(mode)],
+  // Which repository the online admin (GitHub Pages) commits to: "admin" in package.json.
+  define: { __ADMIN_REPO__: JSON.stringify(PKG.admin) },
   build: {
     chunkSizeWarningLimit: 800, // three.js alone is ~550 kB
     rollupOptions: {
       input: {
         main: resolve(ROOT, 'index.html'),
-        // GitHub Pages only serves static files: no API, so no admin panel there.
-        ...(mode !== 'pages' && { admin: resolve(ROOT, 'admin.html') }),
+        // Locally it talks to server.js; on GitHub Pages it commits through the GitHub API.
+        admin: resolve(ROOT, 'admin/index.html'),
       },
     },
   },

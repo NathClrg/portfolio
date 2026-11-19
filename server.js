@@ -4,6 +4,7 @@ import path from 'node:path';
 import express from 'express';
 import multer from 'multer';
 import { normalizeSite, renderIndex, robotsTxt, sitemapXml } from './render.js';
+import { workFields } from './src/admin-common.js';
 
 const ROOT = import.meta.dirname;
 const DATA_DIR = path.join(ROOT, 'data');
@@ -146,23 +147,6 @@ function resolveImages(orderField, files = [], current = []) {
   return { images, unused };
 }
 
-function workFields(body) {
-  const str = (v, max) => String(v ?? '').trim().slice(0, max);
-  const list = (v) =>
-    str(v, 300)
-      .split(',')
-      .map((t) => t.trim())
-      .filter(Boolean);
-  return {
-    title: str(body.title, 120) || 'Untitled',
-    description: str(body.description, 4000),
-    year: str(body.year, 20),
-    tags: list(body.tags),
-    software: list(body.software),
-    link: str(body.link, 500),
-  };
-}
-
 // ---------- app ----------
 const app = express();
 app.use(express.json());
@@ -263,7 +247,8 @@ app.post('/api/works/reorder', requireAuth, (req, res) => {
 });
 
 app.use('/uploads', express.static(UPLOAD_DIR, { maxAge: '7d' }));
-app.get('/admin', (req, res) => res.redirect('/admin.html'));
+// The admin page lives at /admin/ (admin/index.html). Exact match: Express would also route "/admin/" to "/admin".
+app.use((req, res, next) => (['/admin', '/admin.html'].includes(req.path) ? res.redirect('/admin/') : next()));
 
 app.use('/api', (err, req, res, next) => {
   console.error(err);
@@ -274,7 +259,7 @@ app.use('/api', (err, req, res, next) => {
 if (PROD) {
   // The built page keeps its placeholders; fill them per request so admin edits show up right away.
   const template = fs.readFileSync(path.join(ROOT, 'dist', 'index.html'), 'utf8');
-  app.get(['/', '/index.html'], (req, res) => res.type('html').send(renderIndex(template, getSite(), { admin: true })));
+  app.get(['/', '/index.html'], (req, res) => res.type('html').send(renderIndex(template, getSite())));
   app.get('/robots.txt', (req, res) => res.type('text/plain').send(robotsTxt()));
   app.get('/sitemap.xml', (req, res) => res.type('application/xml').send(sitemapXml(getSite())));
   app.use(express.static(path.join(ROOT, 'dist')));
